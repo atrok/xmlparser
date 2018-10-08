@@ -61,4 +61,9 @@ dbwrapper.prototype.handleRequest=function(param){
         }
     })
 }
+
+dbwrapper.prototype.releaseResources=function(){
+    if(this.db)
+    this.db.releaseResources();
+}
 module.exports = new dbwrapper();

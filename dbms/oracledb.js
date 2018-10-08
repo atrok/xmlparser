@@ -77,30 +77,26 @@ oracledb.prototype.init = async function () {
 
   return new Promise(async (resolve, reject) => {
     try {
-      var res = await ora.createPool({
-        user: config.user || dbConfig.user,
-        password: config.password || dbConfig.password,
-        connectString: config.connectString || dbConfig.connectString,
-        // Default values shown below
-        // externalAuth: false, // whether connections should be established using External Authentication
-        poolMax: 100, // maximum size of the pool. Increase UV_THREADPOOL_SIZE if you increase poolMax
-        // poolMin: 0, // start with no connections; let the pool shrink completely
-        // poolIncrement: 1, // only grow the pool by one connection at a time
-        // poolTimeout: 60, // terminate connections that are idle in the pool for 60 seconds
-        // poolPingInterval: 60, // check aliveness of connection if in the pool for 60 seconds
-        // queueRequests: true, // let Node.js queue new getConnection() requests if all pool connections are in use
-        queueTimeout: 120000, // terminate getConnection() calls in the queue longer than 60000 milliseconds
-        // poolAlias: 'myalias' // could set an alias to allow access to the pool via a name
-        // stmtCacheSize: 30 // number of statements that are cached in the statement cache of each connection
-        _enableStats: true
-
-      });
+      var res = await ora.createPool(config);
 
       resolve("Oracle DB pool is created");
     } catch (err) {
       reject(err);
     }
 
+  })
+}
+
+oracledb.prototype.releaseResources=function(){
+  var pool=ora.getPool();
+  var logger=this.log();
+  pool.close(20, function(err){
+    if(err){
+      logger.error("Failed to close the connection pool, err:"+err);
+    }else{
+      logger.info("Connection pool is closed");
+    }
+    
   })
 }
 
@@ -136,7 +132,7 @@ oracledb.prototype.handleRequest = function (params) {
 
   var clientlogger = this.log();
 
-  var commitonerrors = this.config.commitonerrors;
+  var commitonerror = this.config.commitonerror;
 
   return new Promise(async (resolve, reject) => {
     var pool = ora.getPool();
@@ -162,7 +158,7 @@ oracledb.prototype.handleRequest = function (params) {
       clientlogger.debug("#id"+JSON.stringify(id)+' got the query results, start processing results');
 
       if (result.batchErrors){
-        if(commitonerrors) {
+        if(commitonerror) {
         connection.commit(err => {
           clientlogger.info("Committed on error!");
           if(err) 
